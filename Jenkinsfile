@@ -6,32 +6,27 @@ apiVersion: v1
 kind: Pod
 spec:
   containers:
-  - name: runner
-    image: ubuntu:22.04
-    command:
-    - cat
+  - name: python
+    image: ci/python-runner:1.0
+    command: ['cat']
+    tty: true
+
+  - name: node
+    image: ci/node-runner:1.0
+    command: ['cat']
     tty: true
 """
     }
   }
 
   stages {
-    stage('Checkout') {
+    stage('Build') {
       steps {
-        container('runner') {
-          checkout scm
+        container('node') {
+          sh 'npm install'
         }
-      }
-    }
-
-    stage('Run scripts') {
-      steps {
-        container('runner') {
-          sh '''
-            chmod +x scripts/*.sh
-            scripts/script1.sh
-            scripts/script2.sh
-          '''
+        container('python') {
+          sh 'python scripts/run.py'
         }
       }
     }
