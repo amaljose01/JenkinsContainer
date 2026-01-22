@@ -1040,3 +1040,8 @@ Now that you have Jenkins, Kubernetes, and custom CI images running:
 - [Kubernetes Documentation](https://kubernetes.io/docs/)
 - [Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/)
 - [Kubernetes Plugin for Jenkins](https://plugins.jenkins.io/kubernetes/)
+
+---
+
+**Created by:** Amal Jose  
+**Last Updated:** January 2026
