@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jenkins + Kubernetes CI Setup on Mac</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #0066cc;
+            --secondary: #2c3e50;
+            --jenkins: #1a1a1a;
+            --docker: #2496ED;
+            --k8s: #326ce5;
+            --python: #3776ab;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+        }
+
+        * {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--jenkins));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .navbar-brand i {
+            margin-right: 0.5rem;
+            -webkit-text-fill-color: var(--jenkins);
+        }
+
+        .nav-link {
+            color: var(--secondary) !important;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            color: var(--primary) !important;
+            transform: translateY(-2px);
+        }
+
+        .hero {
+            background: linear-gradient(135deg, rgba(0,102,204,0.9), rgba(26,26,26,0.9)), 
+                        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600"><rect fill="none" stroke="%23fff" stroke-width="1" opacity="0.1" x="0" y="0" width="1200" height="600"/></svg>');
+            background-size: cover;
+            color: white;
+            padding: 100px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(0,102,204,0.2), transparent);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hero p {
+            font-size: 1.3rem;
+            margin-bottom: 2rem;
+            opacity: 0.95;
+        }
+
+        .btn-primary-custom {
+            background: linear-gradient(135deg, var(--primary), #0052a3);
+            border: none;
+            padding: 12px 30px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,102,204,0.3);
+        }
+
+        .btn-primary-custom:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,102,204,0.4);
+            background: linear-gradient(135deg, #0052a3, var(--primary));
+        }
+
+        .section {
+            padding: 80px 0;
+            background: white;
+            position: relative;
+        }
+
+        .section:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary), var(--jenkins));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-subtitle {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            border: none;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            border-radius: 10px;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary), #0052a3);
+            color: white;
+            padding: 1.5rem;
+            border: none;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .icon-box {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .icon-box.docker {
+            background: rgba(36, 150, 237, 0.2);
+            color: var(--docker);
+        }
+
+        .icon-box.k8s {
+            background: rgba(50, 108, 229, 0.2);
+            color: var(--k8s);
+        }
+
+        .icon-box.jenkins {
+            background: rgba(26, 26, 26, 0.2);
+            color: var(--jenkins);
+        }
+
+        .icon-box.python {
+            background: rgba(55, 118, 171, 0.2);
+            color: var(--python);
+        }
+
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), #0052a3);
+            color: white;
+            font-weight: 700;
+            margin-right: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .timeline {
+            position: relative;
+            padding: 2rem 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--primary), var(--jenkins));
+        }
+
+        .timeline-item {
+            margin-bottom: 2rem;
+            padding-left: 80px;
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 5px;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid var(--primary);
+            box-shadow: 0 0 0 3px rgba(0,102,204,0.1);
+        }
+
+        .code-block {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            border-left: 4px solid var(--primary);
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .code-label {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .feature-box {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .feature-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+
+        .feature-box i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary), var(--jenkins));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .feature-box h4 {
+            color: var(--secondary);
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        .comparison-table {
+            width: 100%;
+            margin: 2rem 0;
+            border-collapse: collapse;
+        }
+
+        .comparison-table th {
+            background: linear-gradient(135deg, var(--primary), var(--jenkins));
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .comparison-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .comparison-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge-custom {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .badge-docker {
+            background: rgba(36, 150, 237, 0.2);
+            color: var(--docker);
+        }
+
+        .badge-k8s {
+            background: rgba(50, 108, 229, 0.2);
+            color: var(--k8s);
+        }
+
+        .badge-jenkins {
+            background: rgba(26, 26, 26, 0.2);
+            color: var(--jenkins);
+        }
+
+        .banner-info {
+            background: linear-gradient(135deg, rgba(0,102,204,0.1), rgba(26,26,26,0.05));
+            border-left: 4px solid var(--primary);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+
+        .banner-info strong {
+            color: var(--primary);
+        }
+
+        .interactive-card {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .interactive-card:hover {
+            transform: scale(1.02);
+        }
+
+        .image-container {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            margin: 2rem 0;
+        }
+
+        .image-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .diagram {
+            background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+            padding: 2rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .flow-arrow {
+            display: inline-block;
+            margin: 0 1rem;
+            color: var(--primary);
+            font-size: 1.5rem;
+        }
+
+        .footer {
+            background: var(--secondary);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+        }
+
+        .footer-link {
+            color: #ecf0f1;
+            transition: all 0.3s ease;
+        }
+
+        .footer-link:hover {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .progress-bar-custom {
+            height: 8px;
+            background: rgba(0,102,204,0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), #0052a3);
+            animation: animateProgress 1s ease-out;
+        }
+
+        @keyframes animateProgress {
+            from { width: 0; }
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .nav-tabs .nav-link {
+            color: var(--secondary);
+            border: none;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .nav-tabs .nav-link.active {
+            background: none;
+            border-bottom: 3px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .breadcrumb {
+            background: transparent;
+            padding: 1rem 0;
+        }
+
+        .breadcrumb-item.active {
+            color: var(--primary);
+        }
+
+        .breadcrumb-item a {
+            color: var(--secondary);
+            text-decoration: none;
+        }
+
+        .breadcrumb-item a:hover {
+            color: var(--primary);
+        }
+
+        .alert-custom {
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: none;
+            margin: 1rem 0;
+        }
+
+        .alert-info-custom {
+            background: rgba(0,102,204,0.1);
+            color: var(--primary);
+            border-left: 4px solid var(--primary);
+        }
+
+        .alert-success-custom {
+            background: rgba(40,167,69,0.1);
+            color: var(--success);
+            border-left: 4px solid var(--success);
+        }
+
+        .alert-warning-custom {
+            background: rgba(255,193,7,0.1);
+            color: #ff9800;
+            border-left: 4px solid #ff9800;
+        }
+
+        .scroll-to-top {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--jenkins));
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            z-index: 999;
+        }
+
+        .scroll-to-top:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .section-title {
+                font-size: 1.8rem;
+            }
+
+            .timeline::before {
+                left: 10px;
+            }
+
+            .timeline-item {
+                padding-left: 50px;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="#home">
+                <i class="fas fa-cube"></i> Jenkins + K8s CI
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="#docker-setup">Docker Setup</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#jenkins">Jenkins</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#ci-images">CI Images</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#pipelines">Pipelines</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#cleanup">Cleanup</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+        <div class="container hero-content">
+            <h1><i class="fas fa-rocket"></i> Jenkins + Kubernetes CI Setup on Mac</h1>
+            <p>Learn how to build a complete local CI/CD environment using Docker Desktop and Kubernetes</p>
+            <a href="#docker-setup" class="btn btn-primary btn-primary-custom">Get Started</a>
+            <a href="https://github.com" target="_blank" class="btn btn-outline-light ms-2">
+                <i class="fab fa-github"></i> View on GitHub
+            </a>
+        </div>
+    </section>
+
+    <!-- Features Overview -->
+    <section class="section" id="features">
+        <div class="container">
+            <h2 class="section-title text-center mb-5">What You'll Learn</h2>
+            <div class="feature-grid">
+                <div class="feature-box">
+                    <i class="fab fa-docker"></i>
+                    <h4>Docker Mastery</h4>
+                    <p>Set up Docker Desktop and manage containers efficiently on macOS</p>
+                </div>
+                <div class="feature-box">
+                    <i class="fas fa-cube"></i>
+                    <h4>Kubernetes Basics</h4>
+                    <p>Deploy and manage pods on your local Kubernetes cluster</p>
+                </div>
+                <div class="feature-box">
+                    <i class="fas fa-cogs"></i>
+                    <h4>Jenkins CI/CD</h4>
+                    <p>Create powerful automation pipelines with Jenkins</p>
+                </div>
+                <div class="feature-box">
+                    <i class="fab fa-python"></i>
+                    <h4>Custom Images</h4>
+                    <p>Build reusable Docker images for your projects</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Docker Desktop Setup -->
+    <section class="section" id="docker-setup">
+        <div class="container">
+            <h2 class="section-title mb-4">
+                <i class="fab fa-docker"></i> Docker Desktop Setup
+            </h2>
+            <p class="section-subtitle">Foundation for your entire CI/CD environment</p>
+
+            <div class="row mb-5">
+                <div class="col-lg-6">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <h4>Step 1: Install Docker Desktop</h4>
+                            <p>Download from the official Docker website and install on your Mac</p>
+                            <div class="progress-bar-custom">
+                                <div class="progress-fill" style="width: 25%;"></div>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <h4>Step 2: Verify Docker</h4>
+                            <p>Check that Docker is properly installed and running</p>
+                            <div class="progress-bar-custom">
+                                <div class="progress-fill" style="width: 50%;"></div>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <h4>Step 3: Enable Kubernetes</h4>
+                            <p>Activate Kubernetes in Docker Desktop settings</p>
+                            <div class="progress-bar-custom">
+                                <div class="progress-fill" style="width: 75%;"></div>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <h4>Step 4: Install kubectl</h4>
+                            <p>Install the Kubernetes command-line tool</p>
+                            <div class="progress-bar-custom">
+                                <div class="progress-fill" style="width: 100%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-code"></i> Installation Commands
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-3">Verify Docker installation:</p>
+                            <div class="code-block">docker version</div>
+
+                            <p class="mb-3">Verify Kubernetes:</p>
+                            <div class="code-block">kubectl get nodes</div>
+
+                            <p class="mb-3">Install kubectl (if needed):</p>
+                            <div class="code-block">brew install kubectl</div>
+
+                            <div class="alert-custom alert-info-custom">
+                                <strong><i class="fas fa-info-circle"></i> Tip:</strong> First build takes 2-3 minutes as base images are downloaded
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="card interactive-card">
+                        <div class="card-header">
+                            <i class="fas fa-apple"></i> Apple Silicon
+                        </div>
+                        <div class="card-body">
+                            <p><strong>For M1, M2, M3 Macs</strong></p>
+                            <p>Download the Apple Silicon version from Docker's website</p>
+                            <div class="badge-custom badge-docker">Native Performance</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card interactive-card">
+                        <div class="card-header">
+                            <i class="fas fa-microchip"></i> Intel
+                        </div>
+                        <div class="card-body">
+                            <p><strong>For Intel-based Macs</strong></p>
+                            <p>Download the Intel version for compatibility</p>
+                            <div class="badge-custom badge-jenkins">Full Support</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card interactive-card">
+                        <div class="card-header">
+                            <i class="fas fa-cube"></i> Kubernetes
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Built-in Single-Node Cluster</strong></p>
+                            <p>Docker Desktop includes Kubernetes out of the box</p>
+                            <div class="badge-custom badge-k8s">Single Node</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Jenkins Setup -->
+    <section class="section" id="jenkins">
+        <div class="container">
+            <h2 class="section-title mb-4">
+                <i class="fas fa-cogs"></i> Install Jenkins
+            </h2>
+            <p class="section-subtitle">Set up Jenkins as your CI/CD orchestrator</p>
+
+            <div class="row mb-5">
+                <div class="col-lg-6">
+                    <h4 class="mb-3">Running Jenkins Container</h4>
+                    <div class="code-label">Bash</div>
+                    <div class="code-block">
+docker run -d --name jenkins \
+  -p 8080:8080 -p 50000:50000 \
+  -v jenkins_home:/var/jenkins_home \
+  jenkins/jenkins:2.528.3-jdk21
+                    </div>
+                    <div class="alert-custom alert-success-custom">
+                        <strong><i class="fas fa-check-circle"></i></strong> Jenkins will be available at <code>http://localhost:8080</code>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <h4 class="mb-3">What This Does</h4>
+                    <div class="accordion" id="dockerFlags">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#flag1">
+                                    <code>-d</code> Detached Mode
+                                </button>
+                            </h2>
+                            <div id="flag1" class="accordion-collapse collapse show" data-bs-parent="#dockerFlags">
+                                <div class="accordion-body">
+                                    Runs container in the background
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flag2">
+                                    <code>-p 8080:8080</code> Port Mapping
+                                </button>
+                            </h2>
+                            <div id="flag2" class="accordion-collapse collapse" data-bs-parent="#dockerFlags">
+                                <div class="accordion-body">
+                                    Maps container port 8080 to localhost:8080 (Jenkins UI)
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#flag3">
+                                    <code>-v jenkins_home</code> Volume
+                                </button>
+                            </h2>
+                            <div id="flag3" class="accordion-collapse collapse" data-bs-parent="#dockerFlags">
+                                <div class="accordion-body">
+                                    Persists Jenkins data (configs, plugins, build history)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-key"></i> Step 1: Unlock Jenkins
+                        </div>
+                        <div class="card-body">
+                            <p>Get the initial admin password:</p>
+                            <div class="code-block" style="font-size: 0.8rem;">
+docker exec jenkins cat \
+  /var/jenkins_home/secrets/\
+  initialAdminPassword
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-plug"></i> Step 2: Install Plugins
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success"></i> Kubernetes</li>
+                                <li><i class="fas fa-check text-success"></i> Git</li>
+                                <li><i class="fas fa-check text-success"></i> Pipeline</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-sliders"></i> Step 3: Configure K8s
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Manage Jenkins</strong> → <strong>Configure System</strong></p>
+                            <p>Add Kubernetes cloud with default settings</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CI Images -->
+    <section class="section" id="ci-images">
+        <div class="container">
+            <h2 class="section-title mb-4">
+                <i class="fab fa-python"></i> Create Git-Managed CI Images
+            </h2>
+            <p class="section-subtitle">Reusable Docker images for your CI/CD pipelines</p>
+
+            <div class="alert-custom alert-info-custom mb-4">
+                <strong><i class="fas fa-lightbulb"></i> Why Version Control Images?</strong>
+                Track changes to build environments, ensure reproducibility, and share configurations across teams
+            </div>
+
+            <div class="row mb-5">
+                <div class="col-lg-6">
+                    <h4 class="mb-3">Python Dockerfile</h4>
+                    <div class="code-label">Dockerfile</div>
+                    <div class="code-block">
+FROM python:3.11-slim
+
+RUN pip install --no-cache-dir \
+    requests \
+    pandas \
+    numpy
+
+WORKDIR /workspace
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <h4 class="mb-3">Node Dockerfile</h4>
+                    <div class="code-label">Dockerfile</div>
+                    <div class="code-block">
+FROM node:20-slim
+
+WORKDIR /workspace
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-5">
+                <div class="col-lg-12">
+                    <h4 class="mb-3">Build Script</h4>
+                    <div class="code-label">ci-images/build-images.sh</div>
+                    <div class="code-block">
+#!/bin/bash
+set -e
+
+echo "Building Python image..."
+docker build -t ci/python-runner:1.0 ./python
+
+echo "Building Node image..."
+docker build -t ci/node-runner:1.0 ./node
+
+echo "All images built successfully"
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-folder"></i> Directory Structure
+                        </div>
+                        <div class="card-body">
+                            <div class="code-block" style="font-size: 0.85rem; background: #f8f9fa; color: #333;">
+ci-images/
+├── python/
+│   └── Dockerfile
+├── node/
+│   └── Dockerfile
+└── build-images.sh
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-hammer"></i> Build Command
+                        </div>
+                        <div class="card-body">
+                            <div class="code-block">
+cd ci-images
+chmod +x build-images.sh
+./build-images.sh
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-list"></i> Verify Images
+                        </div>
+                        <div class="card-body">
+                            <div class="code-block">
+docker images | grep ci/
+                            </div>
+                            <p class="mt-3 mb-0">Should show:</p>
+                            <p style="color: var(--success); font-weight: 600;">
+                                ci/python-runner:1.0<br>
+                                ci/node-runner:1.0
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pipelines -->
+    <section class="section" id="pipelines">
+        <div class="container">
+            <h2 class="section-title mb-4">
+                <i class="fas fa-project-diagram"></i> Create Jenkins Pipelines
+            </h2>
+            <p class="section-subtitle">Build, test, and deploy with Kubernetes pods</p>
+
+            <ul class="nav nav-tabs mb-4" id="pipelineTab">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#multi-container">Multi-Container</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#python-only">Python Only</a>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <div id="multi-container" class="tab-content active">
+                    <h4 class="mb-3">Multi-Container Pipeline (Python + Node)</h4>
+                    <div class="code-label">Groovy</div>
+                    <div class="code-block">
+pipeline {
+  agent {
+    kubernetes {
+      yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: python
+    image: ci/python-runner:1.0
+    command: ['cat']
+    tty: true
+
+  - name: node
+    image: ci/node-runner:1.0
+    command: ['cat']
+    tty: true
+"""
+    }
+  }
+
+  stages {
+    stage('Build') {
+      steps {
+        container('node') {
+          sh 'npm install'
+        }
+        container('python') {
+          sh 'python scripts/run.py'
+        }
+      }
+    }
+  }
+}
+                    </div>
+                </div>
+                <div id="python-only" class="tab-content">
+                    <h4 class="mb-3">Python-Only Pipeline</h4>
+                    <div class="code-label">Groovy</div>
+                    <div class="code-block">
+pipeline {
+  agent {
+    kubernetes {
+      yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: python
+    image: ci/python-runner:1.0
+    command: ['cat']
+    tty: true
+"""
+    }
+  }
+
+  stages {
+    stage('Run Python Script') {
+      steps {
+        container('python') {
+          sh 'python scripts/run.py'
+        }
+      }
+    }
+  }
+}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-5">
+                <div class="col-lg-6">
+                    <h4 class="mb-3">How Pipelines Work</h4>
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <h5>1. Pod Creation</h5>
+                            <p>Jenkins creates a Kubernetes pod with specified containers</p>
+                        </div>
+                        <div class="timeline-item">
+                            <h5>2. Stage Execution</h5>
+                            <p>Each stage runs in a specific container (or multiple containers)</p>
+                        </div>
+                        <div class="timeline-item">
+                            <h5>3. Build Output</h5>
+                            <p>Output is captured and displayed in Jenkins console</p>
+                        </div>
+                        <div class="timeline-item">
+                            <h5>4. Cleanup</h5>
+                            <p>Pod is automatically deleted when build completes</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <h4 class="mb-3">Important Configuration</h4>
+                    <div class="card">
+                        <div class="card-body">
+                            <h5><code>command: ['cat']</code> and <code>tty: true</code></h5>
+                            <p>These keep the container alive so Jenkins can execute commands inside it.</p>
+                            <div class="alert-custom alert-warning-custom">
+                                <strong><i class="fas fa-exclamation-triangle"></i> Without these:</strong> Container exits immediately and pipeline fails
+                            </div>
+                            <h5 class="mt-4">Container Naming</h5>
+                            <p>Names in YAML must match <code>container('name')</code> calls in pipeline</p>
+                            <div class="code-block">
+container('python') {
+  sh 'python script.py'
+}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Image Management -->
+    <section class="section" id="cleanup">
+        <div class="container">
+            <h2 class="section-title mb-4">
+                <i class="fas fa-trash"></i> Manage Docker Images
+            </h2>
+            <p class="section-subtitle">List, monitor, and safely clean up Docker images</p>
+
+            <div class="row mb-5">
+                <div class="col-lg-6">
+                    <h4 class="mb-3">List Images</h4>
+                    <div class="code-label">View all Docker images</div>
+                    <div class="code-block">
+docker images
+                    </div>
+                    <p class="mt-3">Filter only CI images:</p>
+                    <div class="code-block">
+docker images | grep ci/
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <h4 class="mb-3">Clean Up Process</h4>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="alert-custom alert-warning-custom">
+                                <strong><i class="fas fa-shield-alt"></i> Important:</strong> Never delete images in use by running containers
+                            </div>
+                            <ol>
+                                <li>Check running containers: <code>docker ps</code></li>
+                                <li>Identify unused images</li>
+                                <li>Remove safe images: <code>docker rmi IMAGE_NAME</code></li>
+                                <li>Verify cleanup: <code>docker images</code></li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h4 class="mb-3">Safe Images to Keep</h4>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-shield-alt"></i> Image Pattern</th>
+                        <th><i class="fas fa-info-circle"></i> Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>docker/desktop-*</code></td>
+                        <td>Docker Desktop system images</td>
+                    </tr>
+                    <tr>
+                        <td><code>jenkins/jenkins:*</code></td>
+                        <td>Jenkins itself (if you use it)</td>
+                    </tr>
+                    <tr>
+                        <td><code>registry.k8s.io/*</code></td>
+                        <td>Kubernetes system images</td>
+                    </tr>
+                    <tr>
+                        <td><code>ci/python-runner</code></td>
+                        <td>Your custom CI images</td>
+                    </tr>
+                    <tr>
+                        <td>Any running container image</td>
+                        <td>Currently in use</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="row mt-5">
+                <div class="col-lg-6">
+                    <h4 class="mb-3">Remove Unused Image</h4>
+                    <div class="code-block">
+# Normal removal
+docker rmi python:3.10-slim
+
+# Force removal (use with caution)
+docker rmi -f python:3.10-slim
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <h4 class="mb-3">Automated Cleanup</h4>
+                    <div class="code-block">
+# Remove dangling images
+docker image prune
+
+# Aggressive cleanup (CAUTION)
+docker image prune -a
+                    </div>
+                    <div class="alert-custom alert-danger" style="border-left-color: var(--danger); background: rgba(220, 53, 69, 0.1); color: var(--danger);">
+                        <strong><i class="fas fa-exclamation-circle"></i> Warning:</strong> <code>-a</code> removes all unused images
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Troubleshooting -->
+    <section class="section">
+        <div class="container">
+            <h2 class="section-title mb-5 text-center">
+                <i class="fas fa-bug"></i> Troubleshooting
+            </h2>
+
+            <div class="accordion" id="troubleAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#trouble1">
+                            <i class="fas fa-circle text-danger me-2"></i> Jenkins won't start
+                        </button>
+                    </h2>
+                    <div id="trouble1" class="accordion-collapse collapse show" data-bs-parent="#troubleAccordion">
+                        <div class="accordion-body">
+                            <p><strong>Check if port 8080 is in use:</strong></p>
+                            <div class="code-block">lsof -i :8080</div>
+                            <p class="mt-3"><strong>Kill the process:</strong></p>
+                            <div class="code-block">kill -9 PID</div>
+                            <p class="mt-3">Then restart Jenkins</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#trouble2">
+                            <i class="fas fa-circle text-danger me-2"></i> Kubernetes not enabled
+                        </button>
+                    </h2>
+                    <div id="trouble2" class="accordion-collapse collapse" data-bs-parent="#troubleAccordion">
+                        <div class="accordion-body">
+                            <p><strong>Verify Kubernetes status:</strong></p>
+                            <div class="code-block">kubectl get nodes</div>
+                            <p class="mt-3">If it fails, enable Kubernetes in:</p>
+                            <p><strong>Docker Desktop Settings</strong> → <strong>Kubernetes</strong> → <strong>Enable Kubernetes</strong></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#trouble3">
+                            <i class="fas fa-circle text-danger me-2"></i> Pipeline fails to start
+                        </button>
+                    </h2>
+                    <div id="trouble3" class="accordion-collapse collapse" data-bs-parent="#troubleAccordion">
+                        <div class="accordion-body">
+                            <p><strong>Check Jenkins logs:</strong></p>
+                            <div class="code-block">docker logs jenkins</div>
+                            <p class="mt-3"><strong>Verify Kubernetes connectivity:</strong></p>
+                            <div class="code-block">kubectl cluster-info</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#trouble4">
+                            <i class="fas fa-circle text-danger me-2"></i> Image not found error
+                        </button>
+                    </h2>
+                    <div id="trouble4" class="accordion-collapse collapse" data-bs-parent="#troubleAccordion">
+                        <div class="accordion-body">
+                            <p><strong>Verify image exists:</strong></p>
+                            <div class="code-block">docker images | grep ci/</div>
+                            <p class="mt-3"><strong>If missing, rebuild:</strong></p>
+                            <div class="code-block">
+cd ci-images
+./build-images.sh
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture Diagram -->
+    <section class="section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <div class="container">
+            <h2 class="section-title text-white text-center mb-5">Complete Architecture</h2>
+            
+            <div class="diagram">
+                <div style="background: white; padding: 1rem; border-radius: 8px; display: inline-block;">
+                    <div style="color: #333; font-weight: 600; margin-bottom: 1rem;">
+                        <i class="fas fa-laptop" style="color: var(--secondary); font-size: 1.5rem;"></i> Your Mac
+                    </div>
+                    <div class="flow-arrow"><i class="fas fa-arrow-down"></i></div>
+                    <div style="color: #333; font-weight: 600; margin-bottom: 1rem;">
+                        <i class="fab fa-docker" style="color: var(--docker); font-size: 1.5rem;"></i> Docker Desktop
+                    </div>
+                    <div class="flow-arrow"><i class="fas fa-arrow-right"></i></div>
+                    <div style="color: #333; font-weight: 600;">
+                        <i class="fas fa-cube" style="color: var(--k8s); font-size: 1.5rem;"></i> Kubernetes Cluster
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-5" style="color: white;">
+                <div class="col-lg-3 text-center">
+                    <div style="background: rgba(255,255,255,0.1); padding: 1.5rem; border-radius: 10px;">
+                        <i class="fas fa-docker" style="font-size: 2.5rem; color: var(--docker); margin-bottom: 1rem;"></i>
+                        <h5>Jenkins Container</h5>
+                        <p>Orchestrates builds</p>
+                    </div>
+                </div>
+                <div class="col-lg-3 text-center">
+                    <div style="background: rgba(255,255,255,0.1); padding: 1.5rem; border-radius: 10px;">
+                        <i class="fab fa-python" style="font-size: 2.5rem; color: var(--python); margin-bottom: 1rem;"></i>
+                        <h5>Python Pod</h5>
+                        <p>Runs Python tasks</p>
+                    </div>
+                </div>
+                <div class="col-lg-3 text-center">
+                    <div style="background: rgba(255,255,255,0.1); padding: 1.5rem; border-radius: 10px;">
+                        <i class="fab fa-js" style="font-size: 2.5rem; color: #f7df1e; margin-bottom: 1rem;"></i>
+                        <h5>Node Pod</h5>
+                        <p>Runs Node tasks</p>
+                    </div>
+                </div>
+                <div class="col-lg-3 text-center">
+                    <div style="background: rgba(255,255,255,0.1); padding: 1.5rem; border-radius: 10px;">
+                        <i class="fas fa-code-branch" style="font-size: 2.5rem; color: #ff6b6b; margin-bottom: 1rem;"></i>
+                        <h5>Git Repo</h5>
+                        <p>Source code</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Next Steps -->
+    <section class="section">
+        <div class="container">
+            <h2 class="section-title mb-5 text-center">Next Steps</h2>
+            
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="fas fa-plus-circle"></i> Expand Your Setup
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success"></i>
+                                    Create more complex pipelines with multiple stages
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success"></i>
+                                    Add more tools (Go, Java, Ruby, etc.)
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success"></i>
+                                    Create Jenkinsfiles in your repositories
+                                </li>
+                                <li class="mb-2">
+                                    <i class="fas fa-check text-success"></i>
+                                    Set up GitHub webhooks for automatic builds
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="fas fa-book"></i> Resources
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <a href="https://docs.docker.com/" target="_blank" class="footer-link">
+                                        <i class="fas fa-external-link-alt"></i> Docker Documentation
+                                    </a>
+                                </li>
+                                <li class="mb-2">
+                                    <a href="https://www.jenkins.io/doc/" target="_blank" class="footer-link">
+                                        <i class="fas fa-external-link-alt"></i> Jenkins Documentation
+                                    </a>
+                                </li>
+                                <li class="mb-2">
+                                    <a href="https://kubernetes.io/docs/" target="_blank" class="footer-link">
+                                        <i class="fas fa-external-link-alt"></i> Kubernetes Documentation
+                                    </a>
+                                </li>
+                                <li class="mb-2">
+                                    <a href="https://plugins.jenkins.io/kubernetes/" target="_blank" class="footer-link">
+                                        <i class="fas fa-external-link-alt"></i> Kubernetes Plugin for Jenkins
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p class="mb-2">
+                <i class="fas fa-heart" style="color: #ff6b6b;"></i>
+                Built with love for developers learning CI/CD
+            </p>
+            <p class="mb-3">
+                <a href="https://github.com" target="_blank" class="footer-link me-3">
+                    <i class="fab fa-github"></i> GitHub
+                </a>
+                <a href="https://docker.com" target="_blank" class="footer-link me-3">
+                    <i class="fab fa-docker"></i> Docker
+                </a>
+                <a href="https://jenkins.io" target="_blank" class="footer-link">
+                    <i class="fas fa-cogs"></i> Jenkins
+                </a>
+            </p>
+            <p style="opacity: 0.8;">
+                © 2026 Jenkins Container Setup Guide. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+    <!-- Scroll to Top Button -->
+    <button class="scroll-to-top" id="scrollToTop">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Scroll to Top
+        const scrollToTopBtn = document.getElementById('scrollToTop');
+        
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                scrollToTopBtn.style.display = 'flex';
+            } else {
+                scrollToTopBtn.style.display = 'none';
+            }
+        });
+
+        scrollToTopBtn.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Add animation to elements on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.card, .feature-box, .timeline-item').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(el);
+        });
+
+        // Copy to clipboard functionality
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard!');
+            });
+        }
+
+        // Add copy buttons to code blocks
+        document.querySelectorAll('.code-block').forEach(block => {
+            block.addEventListener('click', function() {
+                const text = this.innerText;
+                copyToClipboard(text);
+            });
+            block.style.cursor = 'pointer';
+            block.title = 'Click to copy';
+        });
+    </script>
+</body>
+</html>
